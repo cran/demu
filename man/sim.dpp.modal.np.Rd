@@ -2,7 +2,7 @@
 \alias{sim.dpp.modal.np}
 \title{Draw samples from the conditional DPP design emulator using a kmeans-based Nystrom approximation.}
 \usage{
-sim.dpp.modal.np(n,p,N,rho,m=max(ceiling(nrow(Xall)*0.1),n),...)
+sim.dpp.modal.np(n,p,N,rho,m=max(ceiling(N*0.1),n),...)
 }
 \arguments{
 \item{n}{Size of the desired design.}

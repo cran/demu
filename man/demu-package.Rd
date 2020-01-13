@@ -21,5 +21,5 @@ Matthew T. Pratola <mpratola@stat.osu.edu> [aut, cre, cph]
 }
 \keyword{ package }
 \seealso{
-  \code{\link{sim.dpp.modal},\link{sim.dpp.modal.fast},\link{sim.dpp.modal.seq}}
+  \code{\link{sim.dpp.modal},\link{sim.dpp.modal.fast},\link{sim.dpp.modal.seq},\link{sim.dpp.modal.fast.seq}}
 }

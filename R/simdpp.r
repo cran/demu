@@ -73,6 +73,7 @@ log.prob.modal.gaussian.dpp<-function(rho,l.dez,pts)
 # This is only proportional to the probabiliity since we don't compute the normalizing constant.
 prob.modal.dpp<-function(R,pts)
 {
+	if(Matrix::isDiagonal(R)) stop("The matrix R is diagonal!\n")
 	n=length(pts)
 	N=nrow(R)
 	e=eigen(R)
@@ -102,6 +103,13 @@ prob.modal.dpp<-function(R,pts)
 sim.dpp.modal.fast<-function(R,n)
 {
 	if(n<=0) stop("Invalid n!\n")
+	if(n>nrow(R)) stop("Invalid n!\n")
+	if(class(R)=="spam") {
+		warning("Converted SPAM matrix to type dgCMatrix.\n")
+		R=spam::as.dgCMatrix.spam(R)
+	}
+	if(class(R)!="dgCMatrix") stop("Expecting matrix of class dgCMatrix!\n")
+	if(Matrix::isDiagonal(R)) stop("The matrix R is diagonal!\n")
 
 	pts=simDppModal_(R,n)
 
@@ -109,6 +117,26 @@ sim.dpp.modal.fast<-function(R,n)
 	pts=pts+1
 
 	return(pts)
+}
+
+sim.dpp.modal.fast.seq<-function(curpts, R, n)
+{
+    if(Matrix::isDiagonal(R)) stop("The matrix R is diagonal!\n")
+    if(length(curpts)>=(nrow(R)-n)) stop("Requested n too large -- available points exhausted!\n")
+	curpts=as.vector(curpts)
+    ix = 1:nrow(R)
+    notcur = ix[-curpts]
+    R.curpts = R[curpts, curpts]
+    R.notcur = R[notcur, notcur]
+    R.curpts.notcur = R[curpts, notcur]
+    Rprime = R.notcur - Matrix::t(R.curpts.notcur) %*% Matrix::chol2inv(Matrix::chol(R.curpts)) %*% 
+        R.curpts.notcur
+    if(!Matrix::isSymmetric(Rprime)) 
+        Rprime = (Rprime + Matrix::t(Rprime))/2
+    pts.new = sim.dpp.modal.fast(Rprime,n)
+    pts.new = notcur[pts.new]
+    return(list(pts.new = pts.new, pts.old = curpts, pts.allin = c(curpts, 
+        pts.new)))
 }
 
 remove.projections<-function(curpts,X)
@@ -135,14 +163,17 @@ remove.projections<-function(curpts,X)
 
 sim.dpp.modal.seq<-function(curpts,R,n)
 {
+	if(Matrix::isDiagonal(R)) stop("The matrix R is diagonal!\n")
+    if(length(curpts)>=(nrow(R)-n)) stop("Requested n too large -- available points exhausted!\n")
+	curpts=as.vector(curpts)
 	ix=1:nrow(R)
 	notcur=ix[-curpts]
 	R.curpts=R[curpts,curpts]
 	R.notcur=R[notcur,notcur]
 	R.curpts.notcur=R[curpts,notcur]
-	Rprime=R.notcur-t(R.curpts.notcur)%*%chol2inv(chol(R.curpts))%*%R.curpts.notcur
+	Rprime=R.notcur-Matrix::t(R.curpts.notcur)%*%chol2inv(chol(R.curpts))%*%R.curpts.notcur
 	if(!isSymmetric(Rprime))
-		Rprime=(Rprime+t(Rprime))/2 # A hack, Rprime may not come back as numerically symmetric even though it must be theoretically.
+		Rprime=(Rprime+Matrix::t(Rprime))/2 # A hack, Rprime may not come back as numerically symmetric even though it must be theoretically.
 
 
 	pts.new=sim.dpp.modal(Rprime,n)
@@ -154,20 +185,20 @@ sim.dpp.modal.seq<-function(curpts,R,n)
 # Draw modal DPP sample using a grid-based Nystrom approximation.
 # This has limitations as the number of grid points would need to grow like ngrid^p so won't scale
 # to high dimensions.
-sim.dpp.modal.nystrom<-function(X,rho,n=0,ngrid=NULL,method="Nystrom")
+sim.dpp.modal.nystrom<-function(Xin,rho,n=0,ngrid=NULL,method="Nystrom")
 {
-	# NULL means we aren't do much of an approximation...
+	# NULL means we aren't do much of an approXinimation...
 	if(is.null(ngrid)) stop("Missing number of grid points to reconstruct over entire space!\n")
 
-	p=ncol(X)
-	l.d=makedistlist(X)
+	p=ncol(Xin)
+	l.d=makedistlist(Xin)
 
 	xgrid=seq(0,1,length=ngrid)
 	ll=vector("list",p)
 	for(i in 1:p) ll[[i]]=xgrid
 	Xapp=as.matrix(expand.grid(ll))
-	Xapp=as.matrix(rbind(Xapp,X))
-	l.all=makedistlist.subset(Xapp,1:(nrow(Xapp)),(ngrid^p+1):(ngrid^p+nrow(X)))
+	Xapp=as.matrix(rbind(Xapp,Xin))
+	l.all=makedistlist.subset(Xapp,1:(nrow(Xapp)),(ngrid^p+1):(ngrid^p+nrow(Xin)))
 
 	R=rhomat(l.d,rho)$R
 	e=eigen(R)
@@ -178,12 +209,12 @@ sim.dpp.modal.nystrom<-function(X,rho,n=0,ngrid=NULL,method="Nystrom")
 
 	pts=sim.dpp.modal(NULL,n=n,eigs=eall)
 
-	return(list(pts=pts,X=Xapp))
+	return(list(pts=pts,X=Xapp,design=Xapp[pts,,drop=FALSE]))
 }
 
 # Use kmeans-based Nystrom approximation of Li et al (2010) to draw an (approximate) modal sample
 # from an observational dataset.
-# Xall is the dataset, n is the number of design points from Xall that we want.
+# Xin is the dataset, n is the number of design points from Xall that we want.
 # rho is the parameter vector under the Gaussian correlation model.
 # m is the number of landmark points for the kmeans-based Nystrom approximation.
 # initializer is how MiniBatchKmeans initializes, recommend "kmeans++" or "random".  The
@@ -191,16 +222,16 @@ sim.dpp.modal.nystrom<-function(X,rho,n=0,ngrid=NULL,method="Nystrom")
 # Additional arguments are passed to MiniBatchKmeans - see the docs in ClusterR for other options.
 # Because MiniBatchKmeans does not return indicies (ugh), we return the candidate matrix and the index
 # within the candidate matrix, as well as the landmark points.
-sim.dpp.modal.nystrom.kmeans<-function(Xall,n,rho=rep(0.01,ncol(Xall)),m=max(ceiling(nrow(Xall)*0.1),n),method="KmeansNystrom",initializer="kmeans++",...)
+sim.dpp.modal.nystrom.kmeans<-function(Xin,rho=rep(0.01,ncol(Xin)),n,m=max(ceiling(nrow(Xin)*0.1),n),method="KmeansNystrom",initializer="kmeans++",...)
 {
 	# m<n is going to be a problem...
 	if(n>m) stop("Require number of landmark points to be greater than requested sample size!\n")
 
-	X=as.matrix(MiniBatchKmeans(Xall,m,initializer=initializer,...)$centroids)
+	X=as.matrix(MiniBatchKmeans(Xin,m,initializer=initializer,...)$centroids)
 
 	l.d=makedistlist(X)
-	Xapp=as.matrix(rbind(Xall,X))
-	l.all=makedistlist.subset(Xapp,1:(m+nrow(Xall)),(nrow(Xall)+1):(nrow(Xall)+m))
+	Xapp=as.matrix(rbind(Xin,X))
+	l.all=makedistlist.subset(Xapp,1:(m+nrow(Xin)),(nrow(Xin)+1):(nrow(Xin)+m))
 
 	R=rhomat(l.d,rho)$R
 	e=eigen(R)
@@ -211,7 +242,7 @@ sim.dpp.modal.nystrom.kmeans<-function(Xall,n,rho=rep(0.01,ncol(Xall)),m=max(cei
 
 	pts=sim.dpp.modal(NULL,n=n,eigs=eall)
 
-	return(list(pts=pts,X=Xapp,X.lm=X))
+	return(list(pts=pts,X=Xapp,X.lm=X,design=Xapp[pts,,drop=FALSE]))
 }
 
 # Generate modal sample of size n in p dimensions with parameter vector rho assuming Gaussian kernel.
@@ -219,11 +250,11 @@ sim.dpp.modal.nystrom.kmeans<-function(Xall,n,rho=rep(0.01,ncol(Xall)),m=max(cei
 # overall approximation size (using uniform sampling).
 # Uses sim.dpp.modal.nystrom.kmeans() to draw the design.
 # Returns the candidates and the index into the candidates as well as the landmark points.
-sim.dpp.modal.np<-function(n,p,N,rho,m=max(ceiling(nrow(Xall)*0.1),n),...)
+sim.dpp.modal.np<-function(n,p,N,rho,m=max(ceiling(N*0.1),n),...)
 {
 	Xall=matrix(runif(N*p),ncol=p)
 
-	return(sim.dpp.modal.nystrom.kmeans(Xall,n,rho,m,...))
+	return(sim.dpp.modal.nystrom.kmeans(Xall,rho,n,m,...))
 }
 
 # This surprisingly does not work well, seems the matrix approximation is very rank deficient.
@@ -277,6 +308,7 @@ sim.dpp.modal.nykron<-function(X,rho,n=0,ngrid=NULL,method="NystromKronecker")
 sim.dpp.modal<-function(R,n=0,eigs=NULL)
 {
 	if(is.null(R) && is.null(eigs)) stop("Missing R and/or eigs!\n")
+	if(!is.null(R) && Matrix::isDiagonal(R)) stop("The matrix R is diagonal!\n")
 	if(!is.null(R)) {
 		eigs=eigen(R)
 	}
@@ -319,6 +351,7 @@ sim.dpp.modal<-function(R,n=0,eigs=NULL)
 
 sim.dpp.modal.2<-function(R,n=0)
 {
+	if(Matrix::isDiagonal(R)) stop("The matrix R is diagonal!\n")
 	e=eigen(R)
 	p=e$values/(1+e$values)
 
@@ -371,6 +404,7 @@ sumsq<-function(vec)
 
 sim.dpp<-function(R,n=0,method="default")
 {
+	if(Matrix::isDiagonal(R)) stop("The matrix R is diagonal!\n")
 	e=eigen(R)
 	p=e$values/(1+e$values)
 
@@ -438,7 +472,7 @@ subspace<-function(V,v.orthto)
 	return(Vnew[,2:ncol(Vnew),drop=FALSE])
  }
 
-# Stabalized version of Gram-Schmidt
+# Stabilized version of Gram-Schmidt
 subspace.2<-function(V,v.orthto)
 {
 	Vnew=matrix(0,nrow=nrow(V),ncol=ncol(V))

@@ -1,8 +1,8 @@
 Package: demu
 Type: Package
 Title: Optimal Design Emulators via Point Processes
-Version: 0.2.0
-Date: 2018-07-06
+Version: 0.3.0
+Date: 2019-12-29
 Author: Matthew T. Pratola <mpratola@stat.osu.edu> [aut, cre, cph]
 Maintainer: Matthew T. Pratola <mpratola@stat.osu.edu>
 Description: Implements the Determinantal point process (DPP) based optimal design
@@ -15,6 +15,6 @@ LinkingTo: Rcpp, RcppArmadillo
 License: AGPL-3
 LazyData: true
 NeedsCompilation: yes
-Packaged: 2018-07-23 09:49:45 UTC; mpratola
+Packaged: 2020-01-11 02:56:06 UTC; mpratola
 Repository: CRAN
-Date/Publication: 2018-07-28 15:40:02 UTC
+Date/Publication: 2020-01-13 09:20:10 UTC

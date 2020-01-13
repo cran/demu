@@ -2,12 +2,12 @@
 \alias{sim.dpp.modal.nystrom.kmeans}
 \title{Subsample an observational dataset using the conditional DPP design emulator with a kmeans-based Nystrom approximation.}
 \usage{
-sim.dpp.modal.nystrom.kmeans(Xall,n,rho=rep(0.01,ncol(Xall)),
-  m=max(ceiling(nrow(Xall)*0.1),n),method="KmeansNystrom",
+sim.dpp.modal.nystrom.kmeans(Xin,rho=rep(0.01,ncol(Xin)),
+  n,m=max(ceiling(nrow(Xin)*0.1),n),method="KmeansNystrom",
   initializer="kmeans++",...)
 }
 \arguments{
-\item{Xall}{An \eqn{n\times p} dataset of observations from which we want to draw subsamples.}
+\item{Xin}{An \eqn{n\times p} dataset of observations from which we want to draw subsamples.}
 
 \item{n}{Size of the designed subsample to draw from \code{Xall}.}
 
@@ -22,10 +22,10 @@ sim.dpp.modal.nystrom.kmeans(Xall,n,rho=rep(0.01,ncol(Xall)),
 \item{...}{Additional options to pass to \code{MiniBatchKmeans()} for selecting the landmark points.}
 }
 \value{
-A list containing a matrix which is the union of the observation matrix \code{Xall} and selected landmark sites, and the indices into this matrix of the selected design sites.
+A list containing a matrix which is the union of the observation matrix \code{Xin} and selected landmark sites, the indices into this matrix of the selected design sites as well as matrix of the design sites.
 }
 \description{
-\code{sim.dpp.modal.nystrom.kmeans()} uses the kmeans-based Nystrom approximation of Zhang and Kwok (2010) to select \code{n} design sites from the observational dataset \code{Xall} using the DPP-based design emulator of Pratola et al. (2018).  The design constructed assumes a Gaussian process
+\code{sim.dpp.modal.nystrom.kmeans()} uses the kmeans-based Nystrom approximation of Zhang and Kwok (2010) to select \code{n} design sites from the observational dataset \code{Xin} using the DPP-based design emulator of Pratola et al. (2018).  The design constructed assumes a Gaussian process
 regression model with stationary correlation function \eqn{r(x,x^\prime)}, where the
 entries of \code{R} are formed by evaluating \eqn{r(x,x^\prime)} over a set of landmarks chosen by the kmeans algorithm, and the resulting eigenvectors are projected into the higher dimensional space using the Nystrom approximation.  Additional options for the \code{MiniBatchKmeans()} algorithm from package \code{ClusterR} can be passed to alter the construction of the landmark set.
 }
@@ -51,7 +51,8 @@ library(demu)
 X=matrix(runif(500*5),ncol=5)
 rho=rep(0.01,5)
 n=50
-samp=sim.dpp.modal.nystrom.kmeans(X,n,rho)
+samp=sim.dpp.modal.nystrom.kmeans(X,rho,n)
+samp$design
 
 # Could plot the result:
 # pchvec=rep(1,nrow(samp$X))

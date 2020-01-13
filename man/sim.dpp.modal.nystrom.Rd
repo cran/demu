@@ -2,10 +2,10 @@
 \alias{sim.dpp.modal.nystrom}
 \title{Draw samples from the conditional DPP design emulator using grid-based Nystrom approximation.}
 \usage{
-sim.dpp.modal.nystrom(X,rho,n=0,ngrid=NULL,method="Nystrom")
+sim.dpp.modal.nystrom(Xin,rho,n=0,ngrid=NULL,method="Nystrom")
 }
 \arguments{
-\item{X}{A initial \eqn{n\times p} matrix of points.}
+\item{Xin}{A initial \eqn{n\times p} matrix of points.}
 
 \item{rho}{The \eqn{p\times 1} parameter vector for the Gaussian correlation model.}
 
@@ -17,7 +17,7 @@ sim.dpp.modal.nystrom(X,rho,n=0,ngrid=NULL,method="Nystrom")
 
 }
 \value{
-A list containing the candidate points constructed and the points selected as the design sites from this candidate set.
+A list containing the candidate points constructed and the points selected as the design sites from this candidate set as well as their indices.
 }
 \description{
 \code{sim.dpp.modal.nystrom()} uses the DPP-based design emulator of Pratola et al. (2018)
@@ -45,6 +45,7 @@ rho=rep(0.01,2)
 n=10
 ngrid=11
 samp=sim.dpp.modal.nystrom(X,rho,n,ngrid)
+samp$design
 
 # Could plot the result:
 # plot(samp$X,xlim=c(0,1),ylim=c(0,1))
